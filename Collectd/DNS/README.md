@@ -8,7 +8,8 @@ This was written to plot the dns queries using collectd. Enabling query logging 
 2. pcap_ipc.pl, that uses IPC to read data from pcap.pl, applies some filters, and iterates and sorts the data every second (with change in value of epoch ) and outputs top 10 IP, its qps and aggregate qps in collectd format.
   1. Packages required: None
   2. Modules required: Socket
-### Active interfaces and certain limits are hardcoded in the script, which may be changed.
+
+##### Active interfaces and certain limits are hardcoded in the script, which may be changed.
 
 
---nohupped@gmail.com
+-- nohupped@gmail.com
