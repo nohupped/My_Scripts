@@ -6,7 +6,7 @@ import _mysql_exceptions ## To import mysql exceptions from /usr/lib/pymodules/p
 warnings.filterwarnings('ignore', category = MySQLdb.Warning)
 
 ###Connection
-db = MySQLdb.connect(host = "localhost", user = "root", passwd = "qazplm123")
+db = MySQLdb.connect(host = "localhost", user = "root", passwd = "testpasswd")
 cursor = db.cursor()
 try:
   cursor.execute("drop database ddns_search_tmp")
