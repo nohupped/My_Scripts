@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import os, time, re, subprocess, tempfile
+import os, time, re, subprocess, tempfile, sys, fcntl
 from db_populate import populate_forward
 from db_populate import populate_ptr
 #print dir(populate)
@@ -17,7 +17,7 @@ def pass_file(file_list): ###Freeze and thaw zones
 		if journal.search(line):
 			line = re.sub("\.jnl", "", line)
 			print "thawing" + line + "\n"
-			subprocess.call(['/bin/echo', "thaw", line])
+			subprocess.call(['/bin/echo', "thaw", line], stdout = open(os.devnull, 'w'))
 
 def combine_zones():  ###Combine all the zones based on PTR or Forward zones
 	with open("/home/girish.g/named.conf.default-zones") as f:
@@ -65,8 +65,29 @@ def combine_zones():  ###Combine all the zones based on PTR or Forward zones
 		forward_zones = []
 		os.remove(temp_ptr.name)
 		os.remove(temp_forward.name)
-		#for line in files:
-	#		return line
+def createDaemon():  ##Create daemon
+#	lock = open(os.path.realpath(__file__), 'r')
+	try:
+		pid = os.fork()
+	except OSError, e:
+		raise Exception, "%s [%d]" % (e.strerror, e.errno)
+	if (pid == 0):
+		os.setsid()
+		try:
+			pid = os.fork()	
+		except OSError, e:
+			raise Exception, "%s [%d]" % (e.strerror, e.errno)
+		if (pid == 0):
+			os.chdir("/var")
+			os.umask(0)
+		else:
+			os._exit(0)
+	else:
+		os._exit(0)
+	sys.stdout = open(os.devnull, 'w')
+createDaemon()
+
+
 while 1:
 	time.sleep (1)
 	after = dict ([(f, None) for f in os.listdir (conf_dir)])
