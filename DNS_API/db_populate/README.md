@@ -1,1 +1,2 @@
+This script is specific to bind9 configuration.
 This script monitor the zonefile configuration path and look for *.jnl files to be created. Once they are created, it freeze that specific zone, thaw the records and unfreeze the zones. Then it combines all the forward lookup zonefiles into a single tmp file, and reverselookup zones into another tmp file, creates a datastructure out of it, and populate it to mysql db. 
