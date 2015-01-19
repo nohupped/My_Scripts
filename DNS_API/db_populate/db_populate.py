@@ -8,21 +8,22 @@ warnings.filterwarnings('ignore', category = MySQLdb.Warning)
 ###Connection
 db = MySQLdb.connect(host = "localhost", user = "root", passwd = "qazplm123")
 cursor = db.cursor()
-try:
-  cursor.execute("drop database ddns_search_tmp")
-  cursor.execute("create database ddns_search_tmp")
-except _mysql_exceptions.OperationalError:
-  cursor.execute("create database ddns_search_tmp")
-cursor.execute("use ddns_search_tmp")	
-warnings.resetwarnings()
+def populate(zonefile):
+	try:
+		cursor.execute("drop database ddns_search_tmp")
+		cursor.execute("create database ddns_search_tmp")
+	except _mysql_exceptions.OperationalError:
+		cursor.execute("create database ddns_search_tmp")
+	cursor.execute("use ddns_search_tmp")	
+	warnings.resetwarnings()
 ###
-create_table = """CREATE TABLE RECORD_SEARCH( id INT NOT NULL AUTO_INCREMENT, DOMAIN VARCHAR(100) NOT NULL, RECORD VARCHAR(100) NOT NULL, RECORD_POINTS_TO VARCHAR(100) NOT NULL, PRIORITY_MX VARCHAR(10) NOT NULL, TTL VARCHAR(100) NOT NULL, GENERATED_ON TIMESTAMP, PRIMARY KEY ( id ));"""
-cursor.execute(create_table)
+	create_table = """CREATE TABLE RECORD_SEARCH( id INT NOT NULL AUTO_INCREMENT, DOMAIN VARCHAR(100) NOT NULL, RECORD VARCHAR(100) NOT NULL, RECORD_POINTS_TO VARCHAR(100) NOT NULL, PRIORITY_MX VARCHAR(10) NOT NULL, TTL VARCHAR(100) NOT NULL, GENERATED_ON TIMESTAMP, PRIMARY KEY ( id ));"""
+	cursor.execute(create_table)
 
 #cursor.execute(use_db)
 
 #cursor.execute("show tables;")
-def populate(zonefile):
+#def populate(zonefile):
 	origin = re.compile("^\$ORIGIN.*")
 	re_skip = re.compile("(\d+\s+?\;\s+serial|\d+\s+?\;\s+refresh|\d+\s+?\;\s+retry|\d+\s+?\;\s+expire|\d+\s+?\;\s+minimum|\s+?\)|\s+?NS\s+?localhost|IN\s+SOA)") ##Skip SOA and serial part
 	origin_skip = re.compile("^\$ORIGIN\ \.$") ##Skip parent domain
@@ -51,12 +52,15 @@ def populate(zonefile):
 				multiple_record = None
 				continue
 		elif ttl.search(line):
-			default_ttl = line 
-			default_ttl = re.sub(';.*', "", default_ttl)
-			default_ttl = re.sub('\s+|\n|\$', '', default_ttl)
-			value = []
-			multiple_record = None
-			continue
+#			if not bool(primary_key):
+#				continue
+#			else:
+				default_ttl = line 
+				default_ttl = re.sub(';.*', "", default_ttl)
+				default_ttl = re.sub('\s+|\n|\$', '', default_ttl)
+				value = []
+				multiple_record = None
+				continue
 		else:
 			if not bool(primary_key):
 				continue
@@ -86,7 +90,7 @@ def populate(zonefile):
 			except:
 				db.rollback()
 				rolledback_records.append(insert_record)
-				print rolledback_records
+	#			print rolledback_records
 				rollback += 1
 	warnings.filterwarnings('ignore', category = MySQLdb.Warning)
 	cursor.execute("DROP DATABASE IF EXISTS ddns_search;")

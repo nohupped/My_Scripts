@@ -1,7 +1,8 @@
 #!/usr/bin/python
 import os, time, re, subprocess, tempfile
 from db_populate import populate
-exclude_list = ['"." {', '"localhost" {', '"127.in-addr.arpa" {', '"0.in-addr.arpa" {', '"255.in-addr.arpa" {' ] ##Exclude these zones
+#print dir(populate)
+exclude_list = ['"." {', '"localhost" {', '"127.in-addr.arpa" {', '"0.in-addr.arpa" {', '"255.in-addr.arpa" {' ] ##Exclude the domains
 file_list = []
 forward_zones = []
 ptr_zones = []
@@ -36,20 +37,20 @@ def combine_zones():  ###Combine all the zones based on PTR or Forward zones
 				zonefilesearch = zonefile.search(line)
 				global forward_zones
 				forward_zones.append(zonefilesearch.group(1))
-#		print str(ptr_zones)
-#		print str(forward_zones)
+	#	print str(ptr_zones)
+	#	print str(forward_zones)
 		##Create tmp file to write combined data
 		tmp_filename_ptr = '/tmp/ptr_zones.%s.txt' % os.getpid()
 		tmp_filename_forward = '/tmp/forward_zones.%s.txt' % os.getpid()
 		temp_ptr = open(tmp_filename_ptr, 'w+b')
-#		print temp_ptr
+		#print temp_ptr
 		with open(temp_ptr.name, 'w') as outfile_ptr:
 			for fname in ptr_zones:
 				with open(fname) as infile:
 					for line in infile:
 						outfile_ptr.write(line)
 		temp_forward = open(tmp_filename_forward, 'w+b')
-#		print temp_forward
+		#print temp_forward
 		with open(temp_forward.name, 'w') as outfile_forward:
 			for fname in forward_zones:
 				with open(fname) as infile:
@@ -59,6 +60,10 @@ def combine_zones():  ###Combine all the zones based on PTR or Forward zones
 		print output_forward
 		ptr_zones = []
 		forward_zones = []
+		os.remove(temp_ptr.name)
+		os.remove(temp_forward.name)
+		#for line in files:
+	#		return line
 while 1:
 	time.sleep (1)
 	after = dict ([(f, None) for f in os.listdir (conf_dir)])
