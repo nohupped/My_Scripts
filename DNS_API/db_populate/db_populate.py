@@ -51,15 +51,12 @@ def populate(zonefile):
 				multiple_record = None
 				continue
 		elif ttl.search(line):
-#			if not bool(primary_key):
-#				continue
-#			else:
-				default_ttl = line 
-				default_ttl = re.sub(';.*', "", default_ttl)
-				default_ttl = re.sub('\s+|\n|\$', '', default_ttl)
-				value = []
-				multiple_record = None
-				continue
+			default_ttl = line 
+			default_ttl = re.sub(';.*', "", default_ttl)
+			default_ttl = re.sub('\s+|\n|\$', '', default_ttl)
+			value = []
+			multiple_record = None
+			continue
 		else:
 			if not bool(primary_key):
 				continue
