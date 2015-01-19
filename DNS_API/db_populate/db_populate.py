@@ -6,7 +6,7 @@ import _mysql_exceptions ## To import mysql exceptions from /usr/lib/pymodules/p
 warnings.filterwarnings('ignore', category = MySQLdb.Warning)
 
 ###Connection
-db = MySQLdb.connect(host = "localhost", user = "root", passwd = "testpasswd")
+db = MySQLdb.connect(host = "localhost", user = "root", passwd = "qazplm123")
 cursor = db.cursor()
 try:
   cursor.execute("drop database ddns_search_tmp")
@@ -51,9 +51,9 @@ def populate(zonefile):
 				multiple_record = None
 				continue
 		elif ttl.search(line):
-			if not bool(primary_key):
-				continue
-			else:
+#			if not bool(primary_key):
+#				continue
+#			else:
 				default_ttl = line 
 				default_ttl = re.sub(';.*', "", default_ttl)
 				default_ttl = re.sub('\s+|\n|\$', '', default_ttl)
@@ -77,9 +77,9 @@ def populate(zonefile):
 			#	value[-1] = value[-1] + primary_key
 			#print value
 			if not "MX" in value:
-				value.insert(3, "NA")
-			insert_record = "INSERT INTO RECORD_SEARCH ( DOMAIN, RECORD, RECORD_POINTS_TO, TTL, PRIORITY_MX ) VALUES ('%s', '%s', '%s', '%s', '%s')" % (value[0], value[1], value[2], default_ttl, value[3])
-		#	print insert_record
+				value.insert(2, "NA")
+			insert_record = "INSERT INTO RECORD_SEARCH ( DOMAIN, RECORD, RECORD_POINTS_TO, PRIORITY_MX, TTL ) VALUES ('%s', '%s', '%s', '%s', '%s')" % (value[0], value[1], value[3], value[2], default_ttl)
+	#		print insert_record
 			try:
 				cursor.execute(insert_record)
 				db.commit()
