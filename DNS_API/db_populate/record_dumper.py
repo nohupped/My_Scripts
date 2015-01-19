@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import os, time, re, subprocess, tempfile
-from db_populate import populate
+from db_populate import populate_forward
+from db_populate import populate_ptr
 #print dir(populate)
 exclude_list = ['"." {', '"localhost" {', '"127.in-addr.arpa" {', '"0.in-addr.arpa" {', '"255.in-addr.arpa" {' ] ##Exclude the domains
 file_list = []
@@ -56,8 +57,10 @@ def combine_zones():  ###Combine all the zones based on PTR or Forward zones
 				with open(fname) as infile:
 					for line in infile:
 						outfile_forward.write(line)
-		output_forward = populate(temp_forward.name)	
+		output_forward = populate_forward(temp_forward.name)	
+		output_ptr = populate_ptr(temp_ptr.name)
 		print output_forward
+		print output_ptr
 		ptr_zones = []
 		forward_zones = []
 		os.remove(temp_ptr.name)

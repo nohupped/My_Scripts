@@ -1,6 +1,6 @@
 #!/usr/bin/python
-if __name__ == '__main__':
-	print "Use as module"
+#if __name__ == '__main__':
+#	print "Use as module"
 import re, pprint, MySQLdb, warnings
 import _mysql_exceptions ## To import mysql exceptions from /usr/lib/pymodules/python2.6/
 warnings.filterwarnings('ignore', category = MySQLdb.Warning)
@@ -8,22 +8,22 @@ warnings.filterwarnings('ignore', category = MySQLdb.Warning)
 ###Connection
 db = MySQLdb.connect(host = "localhost", user = "root", passwd = "qazplm123")
 cursor = db.cursor()
-def populate(zonefile):
+
+def populate_forward(zonefile):
+
 	try:
 		cursor.execute("drop database ddns_search_tmp")
 		cursor.execute("create database ddns_search_tmp")
 	except _mysql_exceptions.OperationalError:
 		cursor.execute("create database ddns_search_tmp")
+
 	cursor.execute("use ddns_search_tmp")	
 	warnings.resetwarnings()
 ###
 	create_table = """CREATE TABLE RECORD_SEARCH( id INT NOT NULL AUTO_INCREMENT, DOMAIN VARCHAR(100) NOT NULL, RECORD VARCHAR(100) NOT NULL, RECORD_POINTS_TO VARCHAR(100) NOT NULL, PRIORITY_MX VARCHAR(10) NOT NULL, TTL VARCHAR(100) NOT NULL, GENERATED_ON TIMESTAMP, PRIMARY KEY ( id ));"""
 	cursor.execute(create_table)
 
-#cursor.execute(use_db)
 
-#cursor.execute("show tables;")
-#def populate(zonefile):
 	origin = re.compile("^\$ORIGIN.*")
 	re_skip = re.compile("(\d+\s+?\;\s+serial|\d+\s+?\;\s+refresh|\d+\s+?\;\s+retry|\d+\s+?\;\s+expire|\d+\s+?\;\s+minimum|\s+?\)|\s+?NS\s+?localhost|IN\s+SOA)") ##Skip SOA and serial part
 	origin_skip = re.compile("^\$ORIGIN\ \.$") ##Skip parent domain
@@ -37,10 +37,12 @@ def populate(zonefile):
 	count = 0
 	rollback = 0
 	#f = open (zonefile, 'r')
+
 	with open(zonefile) as f:
 		data_zones = f.readlines()
 
 	for line in data_zones:
+
 		if origin.search(line):
 			if origin_skip.search(line):
 				continue
@@ -96,6 +98,77 @@ def populate(zonefile):
 	cursor.execute("DROP DATABASE IF EXISTS ddns_search;")
 	cursor.execute("CREATE DATABASE ddns_search;")
 	cursor.execute("RENAME table ddns_search_tmp.RECORD_SEARCH TO ddns_search.RECORD_SEARCH;")
-	return str(count) + " entries added and " + str(rollback) + " entries rolled back."
+	return str(count) + " entries added and " + str(rollback) + " entries rolled back in forward zone"
 	warnings.resetwarnings()
-	db.close()
+	#db.close()
+
+def populate_ptr(zonefile):
+	cursor.execute("use ddns_search_tmp")
+	create_table = """CREATE TABLE RECORD_SEARCH_PTR( id INT NOT NULL AUTO_INCREMENT, IP VARCHAR(20) NOT NULL, RECORD VARCHAR(100) NOT NULL, IP_POINTS_TO VARCHAR(100) NOT NULL, TTL VARCHAR(100) NOT NULL, GENERATED_ON TIMESTAMP, PRIMARY KEY ( id ));"""
+	try:
+		cursor.execute(create_table)
+	except _mysql_exceptions.OperationalError:
+		cursor.execute("drop table RECORD_SEARCH_PTR")
+		cursor.execute(create_table)
+
+	origin = re.compile("^\$ORIGIN.*")
+	re_skip = re.compile("(\d+\s+?\;\s+serial|\d+\s+?\;\s+refresh|\d+\s+?\;\s+retry|\d+\s+?\;\s+expire|\d+\s+?\;\s+minimum|\s+?\)|\s+?NS\s+?localhost|IN\s+SOA)") ##Skip SOA and serial part
+	origin_skip = re.compile("^\$ORIGIN\ \.$") ##Skip parent domain
+	ttl = re.compile("^\$TTL.*")
+	default_ttl = None
+	primary_key = None
+	value = []
+	multiple_record = None
+	committed_records_ptr = []
+	rolledback_records_ptr = []
+	count_ptr = 0
+	rollback_ptr = 0
+	with open(zonefile) as f:
+		data_zones = f.readlines()
+	for line in data_zones:
+		if origin.search(line):
+			if origin_skip.search(line):
+				continue
+			else:
+				line = re.sub("\$ORIGIN\s+", ".", line).strip()
+	#			line = ".".join(re.sub("\.in\-addr\.arpa\.", "", line).split(".")[::-1])
+				line = re.sub("\.$","", ".".join(re.sub("\.in\-addr\.arpa\.", "", line).split(".")[::-1]))
+#				print line
+				primary_key = line
+				value = []
+				multiple_record = None
+				continue
+		elif ttl.search(line):
+			default_ttl = line
+			default_ttl = re.sub(';.*', "", default_ttl)
+			default_ttl = re.sub('\s+|\n|\$', '', default_ttl)
+			value = []
+			multiple_record = None
+			continue
+		else:
+			if not bool(primary_key):
+				continue
+			else:
+				if re_skip.search(line):
+					continue
+				value = line.strip()
+				value = value.split()
+				if value[0] == "PTR":
+					value.insert(0, multiple_record)
+				multiple_record = value[0]
+				value[0] = primary_key + "." + value[0]
+				#print len(value)
+				insert_record = "INSERT INTO RECORD_SEARCH_PTR ( IP, RECORD, IP_POINTS_TO, TTL ) VALUES ('%s', '%s', '%s', '%s')" % (value[0], value[1], value[2], default_ttl)
+#				print insert_record
+				try:
+					cursor.execute(insert_record)
+					db.commit()
+					committed_records_ptr.append(insert_record)
+					count_ptr += 1
+				except:
+					db.rollback()
+					rolledback_records_ptr.append(insert_record)
+					rollback_ptr += 1
+	cursor.execute("DROP TABLE IF EXISTS ddns_search.RECORD_SEARCH_PTR")
+	cursor.execute("RENAME table ddns_search_tmp.RECORD_SEARCH_PTR TO ddns_search.RECORD_SEARCH_PTR;")
+	return str(count_ptr) + " entries added and " + str(rollback_ptr) + " entries rolled back in PTR zone"
