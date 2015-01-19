@@ -1,6 +1,6 @@
 #!/usr/bin/python
-#if __name__ == '__main__':
-#	print "Use as module"
+if __name__ == '__main__':
+	print "Use as module"
 import re, pprint, MySQLdb, warnings
 import _mysql_exceptions ## To import mysql exceptions from /usr/lib/pymodules/python2.6/
 warnings.filterwarnings('ignore', category = MySQLdb.Warning)
