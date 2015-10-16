@@ -5,13 +5,61 @@ import multiprocessing
 import sys
 import pwd
 import grp
-from collections import defaultdict
-import logging
+# from collections import defaultdict
 
+# import logging
+'''
+Thanks to http://code.activestate.com, the below try: except block is copied from
+http://code.activestate.com/recipes/523034-emulate-collectionsdefaultdict/
+for default dict backward compatibility with python versions < 1.7.x
+'''
+try:
+    from collections import defaultdict
+except:
+    class defaultdict(dict):
+        def __init__(self, default_factory=None, *a, **kw):
+            if (default_factory is not None and not hasattr(default_factory, '__call__')):
+                raise TypeError('first argument must be callable')
+            dict.__init__(self, *a, **kw)
+            self.default_factory = default_factory
 
+        def __getitem__(self, key):
+            try:
+                return dict.__getitem__(self, key)
+            except KeyError:
+                return self.__missing__(key)
+
+        def __missing__(self, key):
+            if self.default_factory is None:
+                raise KeyError(key)
+            self[key] = value = self.default_factory()
+            return value
+
+        def __reduce__(self):
+            if self.default_factory is None:
+                args = tuple()
+            else:
+                args = self.default_factory,
+            return type(self), args, None, None, self.items()
+
+        def copy(self):
+            return self.__copy__()
+
+        def __copy__(self):
+            return type(self)(self.default_factory, self)
+
+        def __deepcopy__(self, memo):
+            import copy
+            return type(self)(self.default_factory,
+                              copy.deepcopy(self.items()))
+
+        def __repr__(self):
+            return 'defaultdict(%s, %s)' % (self.default_factory,
+                                            dict.__repr__(self))
 # Variables
-multiprocessing.log_to_stderr(logging.INFO)
-adserver = "xxx.xxx.xxx.xxx"  # AD Server, will change it to accept as parameter later
+# multiprocessing.log_to_stderr(logging.INFO)
+# passwd = raw_input("Enter ldap passsword to bind: ")
+adserver = "172.16.204.92"  # AD Server
 # For storing top level directories for traversing in parallel
 tld = [os.path.join("/", f) for f in os.walk("/").next()[1]]
 exclude = ["/sys", "/proc", "/dev", "/run", "/var", "/dummy"]  # exclude directories
@@ -32,20 +80,25 @@ def get_files(x):  # Get current file list
 
 
 def connect_ldap():
+    import getpass
+    username = raw_input("Enter username (eg: cn=username,dc=Users,dc=example,dc=com): ")
+    bsdn = raw_input("Enter Basedn to search (eg: ou=OU,dc=example,dc=com): ")
+    passwd = getpass.getpass('Enter ldap password to bind: ')
     try:
         print "Connecting to ldap"
         l = ldap.open(adserver)
-        username = "cn=xxx,cn=xxx,dc=xxx,dc=xxx,dc=xxx"
-        password = "xxxxxx"
-        basedn = "ou=xxx,dc=xxx,dc=xxx,dc=xxx"
+        username = username
+        password = passwd
+        basedn = bsdn
 #   filter = "(sAMAccountName="+"girish.g"+")"
         l.simple_bind_s(username, password)
+        print "Connection established, getting users list"
     except Exception, e:
         print e
         sys.exit(1)
     result = l.search_s(basedn, ldap.SCOPE_SUBTREE)
-    return [entry for dn, entry in result if isinstance(entry, dict)]
     print "Ldapsearch gathered"
+    return [entry for dn, entry in result if isinstance(entry, dict)]
 
 
 def filestat(file):
@@ -54,8 +107,9 @@ def filestat(file):
         user = pwd.getpwuid(stat[4])[0]
         group = grp.getgrgid(stat[5])[0]
         return user, group, file
-    except OSError, e:
+    except Exception, e:
         print e
+        print file
         return None
 
 
@@ -83,6 +137,7 @@ def map_ldap_local_users(ldap_users, file_user, file_group):
             username = "".join(i["sAMAccountName"])
             if username in file_user:
                 file_user[username]["ldap_uidnumber"].append(["".join(i["uidNumber"])])
+                file_user[username]["ldap_gidnumber"].append(["".join(i["gidNumber"])])
             else:
                 pass
         except Exception, e:
@@ -92,7 +147,7 @@ def map_ldap_local_users(ldap_users, file_user, file_group):
 
 def accept_input(func, *args):
     while True:
-        ch = raw_input("press Y to continue, ctrl-c to exit")
+        ch = raw_input("press Y to continue, ctrl-c to exit: ")
         if ch != "Y":
             pass
         else:
@@ -102,39 +157,40 @@ def accept_input(func, *args):
 
 def chown_files(file_user, common_users):
     for i in common_users:
-        print "chowning", file_user[i]["file"], " to ", file_user[i]["ldap_uidnumber"]
-        chown_MP(file_user[i]["ldap_uidnumber"], file_user[i]["file"])
+        print 'chowning and chgrping', file_user[i]["file"], ' to ', file_user[i]["ldap_uidnumber"], " and ", file_user[i]["ldap_gidnumber"]
+        chown_MP(file_user[i]["ldap_uidnumber"], file_user[i]["ldap_gidnumber"], file_user[i]["file"])
 
 
-def chown_MP(ldap_uidnumber, filelist):
-    print ldap_uidnumber
+def chown_MP(ldap_uidnumber, ldap_gidnumber, filelist):
     ldap_uidnumber = "".join("".join(map(str, l)) for l in ldap_uidnumber)
-    filelist_with_uid = [(int(ldap_uidnumber), f) for f in filelist]
-    print filelist_with_uid
+    ldap_gidnumber = "".join("".join(map(str, l)) for l in ldap_gidnumber)
+    filelist_with_ids = [(int(ldap_uidnumber), int(ldap_gidnumber), f) for f in filelist]
+    print filelist_with_ids
     try:
         cores = (multiprocessing.cpu_count()*2)
     except:
         cores = 8
     pool_chown = multiprocessing.Pool(cores)
-    pool_chown.map(chown_worker, filelist_with_uid)
+    pool_chown.map(chown_worker, filelist_with_ids)
     pool_chown.close()
     pool_chown.join()
 
 
-def chown_worker(filelist_with_uid):
-    print "chown", filelist_with_uid[0], filelist_with_uid[1]
-    os.chown(filelist_with_uid[1], filelist_with_uid[0], -1)
+def chown_worker(filelist_with_ids):
+    print "chown", filelist_with_ids[0], filelist_with_ids[1]
+    os.chown(filelist_with_ids[2], filelist_with_ids[0], filelist_with_ids[1])
 
 
 def main():  # Calling all functions
+    ldap_users = connect_ldap()
     print "Starting parallel execution"
     pool_filelist = multiprocessing.Pool(processes=len(tld))
     pool_filelist.map(get_files, [x for x in tld if x not in exclude])
     pool_filelist.close()
     pool_filelist.join()
+    # files_new = list(files)
     print "Initialising concurrency and collecting file attributes"
     file_user, file_group = get_attributes()
-    ldap_users = connect_ldap()
     map_ldap_local_users(ldap_users, file_user, file_group)
     users_without_ldap_uid = []
     local_only_users = []
@@ -152,13 +208,14 @@ def main():  # Calling all functions
     print "**********Local only users**********\n"
     print local_only_users
     print "************************************\n\n"
-    print "**********Common Users**********\n"
+    print "**********Common Users who has files in their ownership**********\n"
     print common_users
     print "********************************\n\n"
     print "**********Files owned by common users**********\n"
     for i in common_users:
-        print "## These files will be chowned to ldap uid", file_user[i]["ldap_uidnumber"], "##\n"
+        print "## These files will be chowned to ldap uid", file_user[i]["ldap_uidnumber"], "and chgrped to ", file_user[i]["ldap_gidnumber"], "##\n"
         print file_user[i]["file"]
     accept_input(chown_files, file_user, common_users)
-    print "input accepted"
+    print "Ownership of files changed. Please verify once."
+
 main()  # Execution
