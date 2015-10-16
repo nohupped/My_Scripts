@@ -59,7 +59,7 @@ except:
 # Variables
 # multiprocessing.log_to_stderr(logging.INFO)
 # passwd = raw_input("Enter ldap passsword to bind: ")
-adserver = "172.16.204.92"  # AD Server
+adserver = "AD.SERVER.IP"  # AD Server
 # For storing top level directories for traversing in parallel
 tld = [os.path.join("/", f) for f in os.walk("/").next()[1]]
 exclude = ["/sys", "/proc", "/dev", "/run", "/var", "/dummy"]  # exclude directories
@@ -79,7 +79,7 @@ def get_files(x):  # Get current file list
     print "Finished collecting file list from", x
 
 
-def connect_ldap():
+def connect_ldap():  # using raw_input to avoid passing credentials as parameters and getting logged in shell history.
     import getpass
     username = raw_input("Enter username (eg: cn=username,dc=Users,dc=example,dc=com): ")
     bsdn = raw_input("Enter Basedn to search (eg: ou=OU,dc=example,dc=com): ")
