@@ -76,6 +76,8 @@ def get_files(x):  # Get current file list
     for root, dir, file in os.walk(x):
         for name in file:
             files.append(os.path.join(root, name))
+        for subdirname in dir:
+            files.append(os.path.join(root, subdirname))
     print "Finished collecting file list from", x
 
 
