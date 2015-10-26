@@ -180,7 +180,11 @@ def chown_MP(ldap_uidnumber, ldap_gidnumber, filelist):
 
 def chown_worker(filelist_with_ids):
     print "chown", filelist_with_ids[0], filelist_with_ids[1]
-    os.chown(filelist_with_ids[2], filelist_with_ids[0], filelist_with_ids[1])
+    try:
+        os.chown(filelist_with_ids[2], filelist_with_ids[0], filelist_with_ids[1])
+    except Exception, e:
+        print e
+        pass
 
 
 def main():  # Calling all functions
