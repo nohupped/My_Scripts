@@ -81,21 +81,23 @@ func (N *Node) Make_Custom(M *struct{ Server struct{ Bu struct{ TAG1 TwoD "json:
 
 
 func main() {
-	jsonfile, err  := ioutil.ReadFile("/home/girishg/search.json.bak")
+	user := flag.String("user", "foo", "ssh user")
+	keypath := flag.String("keypath", "keys/foo/bar", "Path to ssh key")
+	jsonconf := flag.String("json", "keys/foo/bar", "Path to json file from runbook")
+	flag.Parse()
+
+	//jsonfile, err  := ioutil.ReadFile("/home/girishg/search.json.bak")
+	jsonfile, err  := ioutil.ReadFile(*jsonconf)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	user := flag.String("user", "foo", "ssh user")
-	keypath := flag.String("keypath", "keys/foo/bar", "Path to ssh key")
-	flag.Parse()
-//	fmt.Println(*user, *keypath)
+
 
 	var jsonobject MainContainer
 	json.Unmarshal(jsonfile, &jsonobject)
-//	fmt.Printf("%v\n", jsonobject)
-	//Proj := &Project{Version: "1"}
+
 	Proj := &Project{}
 	//var nodes []node
 	for _, i := range jsonobject.Devices {
@@ -105,10 +107,6 @@ func main() {
 
 		Proj.Nodes = append(Proj.Nodes, node)
 
-		/*output, _ := xml.MarshalIndent(node, "  ", "    ")
-		os.Stdout.Write([]byte(xml.Header))
-		os.Stdout.Write(output)*/
-		//xml, _ :=
 	}
 //	fmt.Printf("%v\n", Proj)
 	output, _ := xml.MarshalIndent(Proj, "  ", "    ")
