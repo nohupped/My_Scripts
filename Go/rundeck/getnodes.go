@@ -83,7 +83,7 @@ func (N *Node) Make_Custom(M *struct{ Server struct{ Bu struct{ TAG1 TwoD "json:
 func main() {
 	user := flag.String("user", "foo", "ssh user")
 	keypath := flag.String("keypath", "keys/foo/bar", "Path to ssh key")
-	jsonconf := flag.String("json", "keys/foo/bar", "Path to json file from runbook")
+	jsonconf := flag.String("json", "/tmp/search.json", "Path to json file from runbook")
 	flag.Parse()
 
 	//jsonfile, err  := ioutil.ReadFile("/home/girishg/search.json.bak")
