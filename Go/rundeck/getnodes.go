@@ -47,9 +47,10 @@ type Node struct {
 	OsName      string `xml:"osName,attr"`
 	OsVersion   string `xml:"osVersion,attr"`
 	Username    string `xml:"username,attr"`
-	Keypath     string `xml:"ssh-key-storage-path,attr"`
+	Keypath     *string `xml:"ssh-key-storage-path,attr"`
+	Passpath    *string `xml:"ssh-key-passphrase-storage-path,attr"`
 }
-func (N *Node) Make_Custom(M *struct{ Server struct{ Bu struct{ TAG1 TwoD "json:\"applications\""; TAG2 TwoD "json:\"name\""; TAG3 []string "json:\"owners\""; Users []string "json:\"users\"" }; Hostname string "json:\"name\""; Networksetup struct{ Primary_ip string "json:\"primary_ip\"" } "json:\"network_setup\"" } "json:\"server\"" }, user, keypath *string) {
+func (N *Node) Make_Custom(M *struct{ Server struct{ Bu struct{ TAG1 TwoD "json:\"applications\""; TAG2 TwoD "json:\"name\""; TAG3 []string "json:\"owners\""; Users []string "json:\"users\"" }; Hostname string "json:\"name\""; Networksetup struct{ Primary_ip string "json:\"primary_ip\"" } "json:\"network_setup\"" } "json:\"server\"" }, user, keypath, passpath *string) {
 	N.Name = M.Server.Hostname
 	var tmpdata []string
 	for _, i := range M.Server.Bu.TAG1 {
@@ -76,37 +77,55 @@ func (N *Node) Make_Custom(M *struct{ Server struct{ Bu struct{ TAG1 TwoD "json:
 	N.OsName = "NA"
 	N.OsVersion = "NA"
 	N.Username = *user
-	N.Keypath = *keypath
+	switch *keypath {
+	case "":
+		N.Keypath = nil
+	default:
+		N.Keypath = keypath
+	}
+	switch *passpath {
+	case "":
+		N.Passpath = nil
+	default:
+		N.Passpath = passpath
+	}
+
 }
 
-
 func main() {
+	config := flag.String("json", "", "Path to json file")
 	user := flag.String("user", "foo", "ssh user")
-	keypath := flag.String("keypath", "keys/foo/bar", "Path to ssh key")
-	jsonconf := flag.String("json", "/tmp/search.json", "Path to json file from runbook")
+	keypath := flag.String("keypath", "", "Path to ssh key stored in Rundeck's Key Storage (Optional)")
+	passpath := flag.String("passpath", "", "Path to ssh passphrase stored in Rundeck's Key Storage (Optional)")
 	flag.Parse()
-
-	//jsonfile, err  := ioutil.ReadFile("/home/girishg/search.json.bak")
-	jsonfile, err  := ioutil.ReadFile(*jsonconf)
+	if *config == "" {
+		flag.PrintDefaults()
+		panic("No input file defined")
+	}
+	jsonfile, err  := ioutil.ReadFile(*config)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-
+	//	fmt.Println(*user, *keypath)
 
 	var jsonobject MainContainer
 	json.Unmarshal(jsonfile, &jsonobject)
-
+//	fmt.Printf("%v\n", jsonobject)
+	//Proj := &Project{Version: "1"}
 	Proj := &Project{}
 	//var nodes []node
 	for _, i := range jsonobject.Devices {
 		var node Node
-		node.Make_Custom(&i, user, keypath)
+		node.Make_Custom(&i, user, keypath, passpath)
 		//nodes = append(nodes, node)
 
 		Proj.Nodes = append(Proj.Nodes, node)
 
+		/*output, _ := xml.MarshalIndent(node, "  ", "    ")
+		os.Stdout.Write([]byte(xml.Header))
+		os.Stdout.Write(output)*/
+		//xml, _ :=
 	}
 //	fmt.Printf("%v\n", Proj)
 	output, _ := xml.MarshalIndent(Proj, "  ", "    ")
